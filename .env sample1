@@ -1,0 +1,6 @@
+# ollama で利用可能な emded モデルを使うサンプル
+
+# ollama pull で取得可能な Thinking モデル
+GENERATIVE_MODEL_NAME=gemma4:e4b
+# EMBED モデル名
+EMBED_MODEL_NAME=embeddinggemma

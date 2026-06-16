@@ -1,0 +1,4 @@
+gguf-builder/models
+__pycache__
+ollama/models
+chroma/data

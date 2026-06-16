@@ -1,0 +1,79 @@
+services:
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - GENERATIVE_MODEL_NAME=${GENERATIVE_MODEL_NAME}
+      - EMBED_MODEL_NAME=${EMBED_MODEL_NAME}
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+  backend:
+    container_name: backend
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      args:
+        - GENERATIVE_MODEL_NAME=${GENERATIVE_MODEL_NAME}
+        - EMBED_MODEL_NAME=${EMBED_MODEL_NAME}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - ./gguf-builder/models:/gguf_models
+    environment:
+      - GENERATIVE_MODEL_NAME=${GENERATIVE_MODEL_NAME}
+      - EMBED_MODEL_NAME=${EMBED_MODEL_NAME}
+    command: uvicorn app:app --host 0.0.0.0 --port 3000 --reload
+    depends_on: 
+      - chroma
+      - ollama
+  ollama:
+    container_name: ollama
+    build:
+      context: ./ollama
+      dockerfile: Dockerfile
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama/models:/root/.ollama/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  chroma:
+    container_name: chroma
+    build:
+      context: ./chroma
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma/data:/data
+    environment:
+      - CHROMA_PORT=8000
+  gguf-builder:
+    container_name: gguf-builder
+    build:
+      context: ./gguf-builder
+      dockerfile: Dockerfile
+      target: ${EMBED_TARGET:-convert-gguf}
+    environment:
+      - EMBED_TARGET=${EMBED_TARGET:-convert-gguf}
+      - EMBED_MODEL_NAME=${EMBED_MODEL_NAME}
+      - EMBED_MODEL_REPO_ID=${EMBED_MODEL_REPO_ID}
+      - EMBED_MODEL_TOKENTYPE=${EMBED_MODEL_TOKENTYPE}
+      - EMBED_MODEL_CONVERT_TYPE=${EMBED_MODEL_CONVERT_TYPE}
+      - EMBED_MODEL_QUANT_TYPE=${EMBED_MODEL_QUANT_TYPE}
+    volumes:
+      - ./gguf-builder/models:/gguf-models
+    profiles:
+      - tools

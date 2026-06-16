@@ -1,0 +1,19 @@
+# huggingface から ruri-base-v2 をダウンロード、gguf に変換し、q4_K_M に量子化するサンプル
+
+# ollama pull で取得可能な Thinking モデル
+GENERATIVE_MODEL_NAME=gemma4:e4b
+# EMBED モデル名
+EMBED_MODEL_NAME=ruri-base-v2
+## llama-quantize（4bit 以下の量子化に必要）を使用する場合 convert-gguf-quantize、それ以外は convert-gguf
+EMBED_TARGET=convert-gguf-quantize
+## huggingface のリポジトリ ID
+EMBED_MODEL_REPO_ID=cl-nagoya/ruri-base-v2
+## トークナイザーの種類
+EMBED_MODEL_TOKENTYPE=TOKENIZER_TYPE.WPM
+## GGUF 変換時のデータ型（f32 / f16 / bf16 / q8_0 / tq1_0 / tq2_0 / auto）
+## ollama の推奨は q8_0
+EMBED_MODEL_CONVERT_TYPE=f16
+## GGUF 変換時の量子化の種類（Q1_0/Q4_0/Q4_1/MXFP4_MOE/Q5_0/Q5_1/IQ2_XXS/IQ2_XS/IQ2_S/IQ2_M/IQ1_S/IQ1_M/TQ1_0/TQ2_0/Q2_K/Q2_K_S/IQ3_XXS/IQ3_S/IQ3_M/Q3_K/IQ3_XS/Q3_K_S/Q3_K_M/Q3_K_L/IQ4_NL/IQ4_XS/Q4_K/Q4_K_S/Q4_K_M/Q5_K/Q5_K_S/Q5_K_M/Q6_K/Q8_0/F16/BF16/F32）
+## ここで量子化する場合は EMBED_MODEL_CONVERT_TYPE を f16、f32 にする
+## ollama の推奨は q4_K_M
+EMBED_MODEL_QUANT_TYPE=Q4_K_M
