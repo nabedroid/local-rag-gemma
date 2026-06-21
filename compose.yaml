@@ -29,6 +29,7 @@ services:
     environment:
       - GENERATIVE_MODEL_NAME=${GENERATIVE_MODEL_NAME}
       - EMBED_MODEL_NAME=${EMBED_MODEL_NAME}
+      - CONTEXT_SIZE=${CONTEXT_SIZE}
     command: uvicorn app:app --host 0.0.0.0 --port 3000 --reload
     depends_on: 
       - chroma

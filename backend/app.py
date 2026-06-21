@@ -39,6 +39,7 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
 MODEL_NAME = os.getenv("GENERATIVE_MODEL_NAME", "gemma3:1b")
 EMBED_MODEL_NAME = os.getenv("EMBED_MODEL_NAME", "ruri-base-v2")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "my_collection")
+CONTEXT_SIZE = int(os.getenv("CONTEXT_SIZE", 8192))
 
 chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=8000)
 collection = chroma_client.get_or_create_collection(
@@ -77,10 +78,13 @@ def generate_prompt(context: str, question: str) -> str:
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-  # Chromaから参考文脈を検索
+  # Chromaから参考文脈を検索（先頭5件）
   results = collection.query(query_texts=[request.question], n_results=5)
   documents = results.get("documents", [[]])[0]
   context = "\n\n".join(documents)
+
+  # Chromaの検索結果のIDを表示
+  print("chroma result ids:", results.get("ids", [[]])[0])
 
   # プロンプト作成
   prompt = generate_prompt(context, request.question)
@@ -90,7 +94,7 @@ async def chat(request: ChatRequest):
     "stream": True,
     "options": {
       "temperature": 0.2,
-      "num_ctx": 8192,
+      "num_ctx": CONTEXT_SIZE,
     }
   }
 
@@ -100,7 +104,21 @@ async def chat(request: ChatRequest):
       async with client.stream("POST", f"{OLLAMA_URL}/api/generate", json=payload, timeout=300.0) as res:
         async for line in res.aiter_lines():
           chunk = json.loads(line)
-          text = chunk.get("response", "")
-          yield text
+          if chunk.get("done", False):
+            print(
+              f"[Ollama response info] "
+              f"done_reason: {chunk.get('done_reason')}, "
+              f"context_length: {len(chunk.get('context', []))}, "
+              f"load_duration: {chunk.get('load_duration', 0) / 1e6:.0f} ms, "
+              f"prompt_eval_duration: {chunk.get('prompt_eval_duration', 0) / 1e6:.0f} ms, "
+              f"eval_duration: {chunk.get('eval_duration', 0) / 1e6:.0f} ms, "
+              f"total_duration: {chunk.get('total_duration', 0) / 1e6:.0f} ms, "
+              f"prompt_eval_count: {chunk.get('prompt_eval_count', 0)}, "
+              f"eval_count: {chunk.get('eval_count', 0)}",
+              flush=True
+            )
+          else:
+            text_chunk = chunk.get("response", "")
+            yield text_chunk
 
   return StreamingResponse(stream_response(), media_type="text/event-stream")

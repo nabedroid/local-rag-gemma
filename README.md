@@ -47,14 +47,6 @@ docker compose exec backend python setup_chroma.py
 ## 5. 動作確認
 ブラウザで http://localhost:3001 にアクセスして確認する。
 
-タイムアウトが頻発する場合、下記のコマンドで ollama にモデルを事前に読み込ませます。
-（EMBED、LLM のモデル名は適宜変更すること）
-
-```bash
-docker compose exec ollama ollama run embeddinggemma "prompt"
-docker compose exec ollama ollama run gemma4:e4b-it-qat "prompt"
-```
-
 ## 6. 停止
 ```bash
 docker compose down
@@ -75,6 +67,16 @@ docker compose down
 
 # メモ
 
+## モデルのプリロード
+ollama はリクエストが来た時に初めてモデルを読み込むため、初回の推論に時間が掛かる。
+以下のコマンドでモデルを事前に読み込ませることが出来る。
+（5分間推論を行わないとモデルはアンロードされる）
+
+```bash
+docker compose exec ollama ollama run <EMBED_MODEL_NAME> "prompt"
+docker compose exec ollama ollama run <GENERATIVE_MODEL_NAME> "prompt"
+```
+
 ## ollama で huggingface の gguf モデルを取り込む方法
 `ollama run` で取り込み可能。
 
@@ -85,5 +87,24 @@ ollama run hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:Q4_0
 ※上記例の取り込みはエラーとなるので、取り込みたいなら ollama 公式で用意されている gemma4 を使用する
 
 ## GGUF 変換がうまくいかないパターン
-- `ruri-v3-xx` など ModernBert ベースのモデルは GGUF 変換と `ollama create` までは通るが、推論時にエラーになる
-  - Ollama 側で ModernBert が未サポートのため？
+`ruri-v3-30m` など ModernBert ベースのモデルは GGUF 変換と `ollama create` までは通るが、推論時にエラーになる。Ollama 側で ModernBert が未サポートのため？
+
+## VRAM の使用量確認
+`nvidia-smi` コマンドで確認可能。
+以下のコマンドは10秒間隔で VRAM の使用量を`/log.txt`に記録する。
+（`docker cp ollama:/log.txt .` でローカルに取り出せる）
+
+1. `docker compose exec ollama bash`
+2. ```nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.total,memory.used,utilization.memory --format=csv > log.txt
+nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.total,memory.used,utilization.memory --format=csv,noheader -l 10 >> log.txt```
+3. `docker cp ollama:/log.txt .`
+
+### gemma4:e4b-it-qat-q4_0 の場合
+コンテキストサイズごとの VRAM 使用量の目安（`nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.total,memory.used,utilization.memory --format=csv,noheader -l 10` で計測）
+
+| num_ctx | memory.used | 備考 |
+|:---|:---|:---|
+| 8192 | 4175 MiB ||
+| 16384 | 4278 MiB ||
+| 32768 | 4567 MiB ||
+| 128000 | 6070 MiB | モデルの最大コンテキストサイズ |
